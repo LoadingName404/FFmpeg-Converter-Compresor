@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Discord Video Compressor</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@300;500;700;900&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0f;
+  --surface: #111119;
+  --surface2: #1a1a26;
+  --surface3: #222233;
+  --border: #2a2a3a;
+  --accent: #5865F2;
+  --accent-glow: rgba(88,101,242,0.25);
+  --green: #57F287;
+  --yellow: #FEE75C;
+  --red: #ED4245;
+  --cyan: #45ddee;
+  --text: #e8e8f0;
+  --text-dim: #8888a0;
+  --text-muted: #55556a;
+  --radius: 12px;
+}
+
+body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; min-height: 100vh; }
+
+.noise {
+  position: fixed; inset: 0; opacity: 0.025; pointer-events: none; z-index: 999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Layout ── */
+.app { display: flex; height: 100vh; position: relative; z-index: 1; }
+
+.sidebar {
+  width: 380px; min-width: 320px; background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* ── Sidebar: File Browser ── */
+.browser-header {
+  padding: 16px 18px 12px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+.browser-title {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 2px; color: var(--text-muted);
+}
+
+.path-bar {
+  display: flex; gap: 6px; align-items: center;
+}
+
+.path-input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem; padding: 7px 10px; outline: none;
+}
+
+.path-input:focus { border-color: var(--accent); }
+
+.path-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-dim); border-radius: 8px; padding: 7px 10px;
+  cursor: pointer; font-size: 0.85rem; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.path-btn:hover { border-color: var(--accent); color: var(--text); }
+
+.drives-row {
+  display: flex; gap: 4px; flex-wrap: wrap; padding: 0 18px 8px;
+}
+
+.drive-btn {
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text-dim); border-radius: 6px; padding: 3px 8px;
+  cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem; font-weight: 600; transition: all 0.2s;
+}
+
+.drive-btn:hover { border-color: var(--accent); color: var(--text); }
+
+.file-list {
+  flex: 1; overflow-y: auto; padding: 6px 0;
+}
+
+.file-list::-webkit-scrollbar { width: 6px; }
+.file-list::-webkit-scrollbar-track { background: transparent; }
+.file-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.file-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 18px; cursor: pointer; transition: background 0.15s;
+  user-select: none;
+}
+
+.file-item:hover { background: rgba(255,255,255,0.03); }
+.file-item.selected { background: rgba(88,101,242,0.1); }
+
+.file-icon { font-size: 1.1rem; width: 24px; text-align: center; flex-shrink: 0; }
+
+.file-name {
+  flex: 1; font-size: 0.84rem; font-weight: 500;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.file-name.dir { color: var(--cyan); }
+
+.file-size {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem; color: var(--text-muted); flex-shrink: 0;
+}
+
+.file-check {
+  width: 18px; height: 18px; border-radius: 4px;
+  border: 2px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; font-size: 0.7rem;
+}
+
+.file-item.selected .file-check {
+  border-color: var(--accent); background: var(--accent); color: #fff;
+}
+
+.browser-actions {
+  padding: 12px 18px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px; align-items: center;
+}
+
+.selected-count {
+  font-size: 0.8rem; color: var(--text-dim); flex: 1;
+}
+
+.btn {
+  padding: 8px 16px; border-radius: 8px; border: none;
+  font-family: 'Outfit', sans-serif; font-weight: 600;
+  font-size: 0.82rem; cursor: pointer; transition: all 0.2s;
+}
+
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.15); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btn-ghost {
+  background: transparent; color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+.btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+
+/* ── Main: Header ── */
+.main-header {
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.main-header h1 {
+  font-size: 1.4rem; font-weight: 900; letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--accent), #7B83F5, var(--green));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+}
+
+/* ── Main: Tab bar ── */
+.tab-bar {
+  display: flex; border-bottom: 1px solid var(--border);
+  padding: 0 28px;
+}
+
+.tab {
+  padding: 12px 20px; font-weight: 600; font-size: 0.85rem;
+  color: var(--text-muted); cursor: pointer; position: relative;
+  transition: color 0.2s; user-select: none;
+}
+
+.tab:hover { color: var(--text-dim); }
+
+.tab.active { color: var(--text); }
+
+.tab.active::after {
+  content: ''; position: absolute; bottom: -1px; left: 0; right: 0;
+  height: 2px; background: var(--accent); border-radius: 1px;
+}
+
+/* ── Main: Content panels ── */
+.panels { flex: 1; overflow-y: auto; }
+
+.panel { display: none; padding: 24px 28px; }
+.panel.active { display: block; }
+
+/* ── Settings panel ── */
+.section-title {
+  font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 2px; color: var(--text-muted); margin: 20px 0 14px;
+}
+
+.section-title:first-child { margin-top: 0; }
+
+.pc-profiles { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.pc-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 10px;
+  background: var(--surface2); border: 2px solid var(--border);
+  cursor: pointer; transition: all 0.2s; flex: 1; min-width: 160px;
+  user-select: none;
+}
+
+.pc-chip:hover { border-color: #444; }
+.pc-chip.active { border-color: var(--accent); background: rgba(88,101,242,0.08); }
+
+.pc-chip-icon { font-size: 1.2rem; }
+.pc-chip-name { font-weight: 600; font-size: 0.84rem; }
+.pc-chip-sub { font-size: 0.68rem; color: var(--text-muted); }
+
+.hw-badges { display: flex; gap: 4px; margin-top: 10px; flex-wrap: wrap; }
+
+.hw-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem; font-weight: 600; letter-spacing: 0.5px;
+  padding: 3px 8px; border-radius: 5px;
+}
+
+.hw-badge.nvenc { background: rgba(118,185,0,0.15); color: #76b900; border: 1px solid rgba(118,185,0,0.25); }
+.hw-badge.qsv { background: rgba(0,125,195,0.15); color: #0091e0; border: 1px solid rgba(0,125,195,0.25); }
+.hw-badge.amf { background: rgba(237,28,36,0.12); color: #f06; border: 1px solid rgba(237,28,36,0.2); }
+.hw-badge.cpu { background: rgba(255,255,255,0.06); color: var(--text-dim); border: 1px solid var(--border); }
+.hw-badge.os { background: rgba(88,101,242,0.1); color: #8890f8; border: 1px solid rgba(88,101,242,0.2); }
+
+.setting-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 0; border-bottom: 1px solid var(--border);
+}
+
+.setting-row:last-child { border-bottom: none; }
+.setting-label { font-weight: 500; font-size: 0.88rem; }
+.setting-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 1px; }
+.setting-control { display: flex; align-items: center; gap: 8px; }
+
+.s-select, .s-input {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.82rem;
+  padding: 7px 10px; outline: none; transition: border-color 0.2s;
+}
+
+.s-select { width: 155px; cursor: pointer; }
+.s-input { width: 80px; }
+.s-select:focus, .s-input:focus { border-color: var(--accent); }
+.unit { font-size: 0.78rem; color: var(--text-dim); }
+
+.toggle { position: relative; width: 40px; height: 22px; cursor: pointer; }
+.toggle input { display: none; }
+
+.toggle-track {
+  position: absolute; inset: 0; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 11px; transition: all 0.3s;
+}
+
+.toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+
+.toggle-thumb {
+  position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+  background: var(--text); border-radius: 50%;
+  transition: transform 0.3s; pointer-events: none;
+}
+
+.toggle input:checked ~ .toggle-thumb { transform: translateX(18px); }
+
+/* ── Queue panel ── */
+.queue-controls {
+  display: flex; gap: 8px; margin-bottom: 16px; align-items: center;
+}
+
+.queue-controls .flex1 { flex: 1; }
+
+.job-list { display: flex; flex-direction: column; gap: 10px; }
+
+.job-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; transition: border-color 0.2s;
+}
+
+.job-card.running { border-color: var(--accent); }
+.job-card.done { border-color: rgba(87,242,135,0.3); }
+.job-card.error { border-color: rgba(237,66,69,0.3); }
+
+.job-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+
+.job-status-dot {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+}
+
+.job-status-dot.queued { background: var(--text-muted); }
+.job-status-dot.running { background: var(--accent); animation: pulse 1.5s infinite; }
+.job-status-dot.done { background: var(--green); }
+.job-status-dot.error { background: var(--red); }
+.job-status-dot.cancelled { background: var(--text-muted); }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.job-filename {
+  flex: 1; font-weight: 600; font-size: 0.88rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.job-cancel {
+  background: none; border: 1px solid var(--border); color: var(--text-muted);
+  border-radius: 6px; padding: 3px 10px; cursor: pointer;
+  font-family: 'Outfit', sans-serif; font-size: 0.75rem;
+  transition: all 0.2s;
+}
+
+.job-cancel:hover { border-color: var(--red); color: var(--red); }
+
+.job-progress-bar {
+  height: 6px; background: var(--surface3); border-radius: 3px;
+  overflow: hidden; margin: 8px 0;
+}
+
+.job-progress-fill {
+  height: 100%; border-radius: 3px; transition: width 0.3s;
+  background: linear-gradient(90deg, var(--accent), #7B83F5);
+}
+
+.job-card.done .job-progress-fill { background: var(--green); }
+.job-card.error .job-progress-fill { background: var(--red); }
+
+.job-meta {
+  display: flex; gap: 16px; font-size: 0.75rem; color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.job-meta strong { color: var(--text-dim); }
+
+.job-error-msg {
+  margin-top: 6px; font-size: 0.78rem; color: var(--red);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.job-done-info {
+  margin-top: 6px; font-size: 0.78rem; color: var(--green);
+}
+
+/* ── Probe detail tags ── */
+.probe-tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+
+.probe-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem; font-weight: 600; padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.probe-tag.interlaced { background: rgba(254,231,92,0.12); color: var(--yellow); border: 1px solid rgba(254,231,92,0.2); }
+.probe-tag.sar { background: rgba(69,221,238,0.12); color: var(--cyan); border: 1px solid rgba(69,221,238,0.2); }
+.probe-tag.legacy { background: rgba(237,66,69,0.1); color: var(--red); border: 1px solid rgba(237,66,69,0.2); }
+.probe-tag.ok { background: rgba(87,242,135,0.1); color: var(--green); border: 1px solid rgba(87,242,135,0.2); }
+
+/* ── Empty state ── */
+.empty-state {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 60px 20px; color: var(--text-muted);
+  text-align: center;
+}
+
+.empty-state .icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+.empty-state .text { font-size: 0.95rem; font-weight: 500; }
+.empty-state .sub { font-size: 0.82rem; margin-top: 4px; }
+
+/* ── Video detail in selected files ── */
+.selected-files { display: flex; flex-direction: column; gap: 8px; margin: 16px 0; }
+
+.sel-file {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+}
+
+.sel-file-header { display: flex; align-items: center; gap: 8px; }
+.sel-file-icon { font-size: 1.1rem; }
+
+.sel-file-name {
+  flex: 1; font-weight: 600; font-size: 0.85rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.sel-file-remove {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 1rem; padding: 0 4px;
+  transition: color 0.2s;
+}
+
+.sel-file-remove:hover { color: var(--red); }
+
+.sel-file-meta {
+  display: flex; gap: 12px; margin-top: 6px; flex-wrap: wrap;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.74rem;
+  color: var(--text-dim);
+}
+
+.sel-file-loading {
+  font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;
+  font-style: italic;
+}
+
+/* ── Scrollbars ── */
+.panels::-webkit-scrollbar { width: 6px; }
+.panels::-webkit-scrollbar-track { background: transparent; }
+.panels::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+<div class="noise"></div>
+
+<div class="app">
+  <!-- Sidebar: File Browser -->
+  <div class="sidebar">
+    <div class="browser-header">
+      <div class="browser-title">Explorador</div>
+      <div class="path-bar">
+        <button class="path-btn" id="btnUp" title="Subir">⬆</button>
+        <input class="path-input" id="pathInput" type="text" spellcheck="false">
+        <button class="path-btn" id="btnGo" title="Ir">→</button>
+      </div>
+    </div>
+    <div class="drives-row" id="drivesRow"></div>
+    <div class="file-list" id="fileList"></div>
+    <div class="browser-actions">
+      <div class="selected-count" id="selectedCount">0 archivos</div>
+      <button class="btn btn-ghost" id="btnSelectAll">Todos</button>
+      <button class="btn btn-primary" id="btnAddQueue" disabled>Agregar a cola</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <div class="main-header">
+      <h1>Discord Video Compressor</h1>
+    </div>
+
+    <div class="tab-bar">
+      <div class="tab active" data-tab="settings">⚙ Configuración</div>
+      <div class="tab" data-tab="queue">📋 Cola <span id="queueBadge"></span></div>
+    </div>
+
+    <div class="panels">
+      <!-- Settings Panel -->
+      <div class="panel active" id="panelSettings">
+
+        <div class="section-title">Modo</div>
+        <div class="pc-profiles" id="modeSelector">
+          <div class="pc-chip active" data-mode="compress">
+            <div class="pc-chip-icon">📦</div>
+            <div>
+              <div class="pc-chip-name">Comprimir</div>
+              <div class="pc-chip-sub">Gameplay → ≤ 10 MB</div>
+            </div>
+          </div>
+          <div class="pc-chip" data-mode="convert">
+            <div class="pc-chip-icon">📼</div>
+            <div>
+              <div class="pc-chip-name">Convertir</div>
+              <div class="pc-chip-sub">HandyCam / legacy → MP4</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-title">Equipo</div>
+        <div class="pc-profiles" id="pcProfiles"></div>
+        <div class="hw-badges" id="hwBadges"></div>
+
+        <div class="section-title">Archivos seleccionados</div>
+        <div class="selected-files" id="selectedFiles">
+          <div class="empty-state" style="padding:24px;">
+            <div class="sub">Selecciona archivos del explorador</div>
+          </div>
+        </div>
+
+        <div class="section-title">Encoding</div>
+
+        <div class="setting-row" id="rowSizeLimit">
+          <div>
+            <div class="setting-label">Límite de tamaño</div>
+            <div class="setting-hint">Discord Free = 10 MB, Nitro = 50 MB</div>
+          </div>
+          <div class="setting-control">
+            <input class="s-input" type="number" id="sizeLimit" value="10" min="1" max="500">
+            <span class="unit">MB</span>
+          </div>
+        </div>
+
+        <div class="setting-row" id="rowCRF" style="display:none;">
+          <div>
+            <div class="setting-label">CRF (calidad constante)</div>
+            <div class="setting-hint">Menor = mejor calidad, más peso. 18-23 recomendado</div>
+          </div>
+          <div class="setting-control">
+            <input class="s-input" type="number" id="crfValue" value="20" min="0" max="51">
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Encoder</div>
+            <div class="setting-hint" id="encoderHint"></div>
+          </div>
+          <div class="setting-control">
+            <select class="s-select" id="encoder"></select>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Preset</div>
+            <div class="setting-hint" id="presetHint"></div>
+          </div>
+          <div class="setting-control">
+            <select class="s-select" id="preset"></select>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Audio bitrate</div>
+          </div>
+          <div class="setting-control">
+            <select class="s-select" id="audioBitrate">
+              <option value="64">64 kbps</option>
+              <option value="96" selected>96 kbps</option>
+              <option value="128">128 kbps</option>
+              <option value="160">160 kbps</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Incluir audio</div>
+          </div>
+          <div class="setting-control">
+            <label class="toggle">
+              <input type="checkbox" id="includeAudio" checked>
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+            </label>
+          </div>
+        </div>
+
+        <div class="setting-row" id="rowDeinterlace" style="display:none;">
+          <div>
+            <div class="setting-label">Desentrelazar</div>
+            <div class="setting-hint">Para video entrelazado (480i, 1080i)</div>
+          </div>
+          <div class="setting-control">
+            <select class="s-select" id="deinterlace">
+              <option value="yadif">yadif (rápido)</option>
+              <option value="bwdif" selected>bwdif (mejor calidad)</option>
+              <option value="none">No</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">Resolución</div>
+          </div>
+          <div class="setting-control">
+            <select class="s-select" id="resOverride">
+              <option value="auto" selected>Auto</option>
+              <option value="source">Mantener original</option>
+              <option value="1080">1080p</option>
+              <option value="720">720p</option>
+              <option value="480">480p</option>
+              <option value="360">360p</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div>
+            <div class="setting-label">FPS</div>
+          </div>
+          <div class="setting-control">
+            <select class="s-select" id="fpsOverride">
+              <option value="auto" selected>Auto</option>
+              <option value="source">Mantener</option>
+              <option value="60">60</option>
+              <option value="30">30</option>
+              <option value="24">24</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Queue Panel -->
+      <div class="panel" id="panelQueue">
+        <div class="queue-controls">
+          <div class="flex1"></div>
+          <button class="btn btn-ghost" id="btnClearDone">Limpiar terminados</button>
+        </div>
+        <div class="job-list" id="jobList">
+          <div class="empty-state">
+            <div class="icon">📋</div>
+            <div class="text">Cola vacía</div>
+            <div class="sub">Selecciona archivos y agrégalos a la cola</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+// ═══════════════════════════════════════════════════
+//  PC PROFILES & ENCODERS
+// ═══════════════════════════════════════════════════
+const PC_PROFILES = [
+  {
+    id: 'desktop', name: 'Desktop', icon: '🖥️',
+    sub: 'i5-10400F · GT 1030', os: 'windows',
+    cpu: 'i5-10400F (6C/12T)',
+    hwEncoders: ['h264_nvenc'],
+    swEncoders: ['libx264', 'libx265'],
+    threads: 12,
+  },
+  {
+    id: 'laptop', name: 'Laptop', icon: '💻',
+    sub: 'R5 7520U · Radeon', os: 'windows',
+    cpu: 'Ryzen 5 7520U (4C/8T)',
+    hwEncoders: ['h264_amf', 'hevc_amf'],
+    swEncoders: ['libx264', 'libx265'],
+    threads: 8,
+  },
+  {
+    id: 'server', name: 'ThinkCentre', icon: '🖧',
+    sub: 'i5-8400T · Ubuntu', os: 'linux',
+    cpu: 'i5-8400T (6C/6T)',
+    hwEncoders: ['h264_qsv', 'hevc_qsv'],
+    swEncoders: ['libx264', 'libx265'],
+    threads: 6,
+  },
+];
+
+const ENCODERS = {
+  libx264: {
+    label: 'H.264 (libx264) — CPU', type: 'sw', codec: 'h264',
+    presets: ['medium','slow','slower','veryslow'], defaultPreset: 'slower',
+    hint: 'CPU — lento pero preciso', twoPass: true,
+    buildBR: (br,pr,pf,vf,au,inp,out,nd,thr) => {
+      const t = thr ? ` -threads ${thr}` : '';
+      const c = `-c:v libx264 -b:v ${br}k -preset ${pr} -pix_fmt ${pf}${vf}${t}`;
+      return [`ffmpeg -y -i "${inp}" ${c} -pass 1 -an -f null ${nd}`, `ffmpeg -y -i "${inp}" ${c} -pass 2 ${au} "${out}"`];
+    },
+    buildCRF: (crf,pr,pf,vf,au,inp,out,thr) => {
+      const t = thr ? ` -threads ${thr}` : '';
+      return [`ffmpeg -y -i "${inp}" -c:v libx264 -crf ${crf} -preset ${pr} -pix_fmt ${pf}${vf}${t} ${au} "${out}"`];
+    },
+  },
+  libx265: {
+    label: 'H.265 (libx265) — CPU', type: 'sw', codec: 'hevc',
+    presets: ['medium','slow','slower','veryslow'], defaultPreset: 'slower',
+    hint: 'CPU — ~30% mejor compresión', twoPass: true,
+    buildBR: (br,pr,pf,vf,au,inp,out,nd,thr) => {
+      const t = thr ? ` -threads ${thr}` : '';
+      const c = `-c:v libx265 -b:v ${br}k -preset ${pr} -pix_fmt ${pf}${vf} -tag:v hvc1${t}`;
+      return [`ffmpeg -y -i "${inp}" ${c} -x265-params pass=1:stats=x265stats -an -f null ${nd}`, `ffmpeg -y -i "${inp}" ${c} -x265-params pass=2:stats=x265stats ${au} "${out}"`];
+    },
+    buildCRF: (crf,pr,pf,vf,au,inp,out,thr) => {
+      const t = thr ? ` -threads ${thr}` : '';
+      return [`ffmpeg -y -i "${inp}" -c:v libx265 -crf ${crf} -preset ${pr} -pix_fmt ${pf}${vf} -tag:v hvc1${t} ${au} "${out}"`];
+    },
+  },
+  h264_nvenc: {
+    label: 'H.264 NVENC — GPU', type: 'hw', codec: 'h264',
+    presets: ['p4','p5','p6','p7'], defaultPreset: 'p6',
+    hint: 'NVENC — ultra rápido',
+    buildBR: (br,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_nvenc -b:v ${br}k -preset ${pr} -pix_fmt ${pf} -rc vbr -multipass fullres -spatial-aq 1 -temporal-aq 1${vf} ${au} "${out}"`],
+    buildCRF: (cq,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_nvenc -cq ${cq} -preset ${pr} -pix_fmt ${pf} -rc vbr -multipass fullres -spatial-aq 1 -temporal-aq 1${vf} ${au} "${out}"`],
+  },
+  h264_amf: {
+    label: 'H.264 AMF — AMD', type: 'hw', codec: 'h264',
+    presets: ['speed','balanced','quality'], defaultPreset: 'quality',
+    hint: 'AMF — GPU AMD',
+    buildBR: (br,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_amf -b:v ${br}k -quality ${pr} -pix_fmt ${pf} -rc cbr${vf} ${au} "${out}"`],
+    buildCRF: (crf,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_amf -rc cqp -qp_i ${crf} -qp_p ${crf} -quality ${pr} -pix_fmt ${pf}${vf} ${au} "${out}"`],
+  },
+  hevc_amf: {
+    label: 'H.265 AMF — AMD', type: 'hw', codec: 'hevc',
+    presets: ['speed','balanced','quality'], defaultPreset: 'quality',
+    hint: 'AMF HEVC — mejor compresión',
+    buildBR: (br,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v hevc_amf -b:v ${br}k -quality ${pr} -pix_fmt ${pf} -rc cbr${vf} -tag:v hvc1 ${au} "${out}"`],
+    buildCRF: (crf,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v hevc_amf -rc cqp -qp_i ${crf} -qp_p ${crf} -quality ${pr} -pix_fmt ${pf}${vf} -tag:v hvc1 ${au} "${out}"`],
+  },
+  h264_qsv: {
+    label: 'H.264 QSV — Intel', type: 'hw', codec: 'h264',
+    presets: ['fast','medium','slow','veryslow'], defaultPreset: 'slow',
+    hint: 'Quick Sync — iGPU Intel',
+    buildBR: (br,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_qsv -b:v ${br}k -preset ${pr} -pix_fmt ${pf}${vf} ${au} "${out}"`],
+    buildCRF: (crf,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_qsv -global_quality ${crf} -preset ${pr} -pix_fmt ${pf}${vf} ${au} "${out}"`],
+  },
+  hevc_qsv: {
+    label: 'H.265 QSV — Intel', type: 'hw', codec: 'hevc',
+    presets: ['fast','medium','slow','veryslow'], defaultPreset: 'slow',
+    hint: 'QSV HEVC — mejor compresión',
+    buildBR: (br,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v hevc_qsv -b:v ${br}k -preset ${pr} -pix_fmt ${pf}${vf} -tag:v hvc1 ${au} "${out}"`],
+    buildCRF: (crf,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v hevc_qsv -global_quality ${crf} -preset ${pr} -pix_fmt ${pf}${vf} -tag:v hvc1 ${au} "${out}"`],
+  },
+};
+
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+let activePC = PC_PROFILES[0];
+let currentMode = 'compress';
+let selectedFiles = []; // [{path, name, size, probe: null|{...}}]
+let currentBrowsePath = '';
+
+const VIDEO_EXTS = ['.mp4','.mkv','.avi','.mov','.webm','.mpg','.mpeg','.vob','.ts','.m2ts','.wmv','.flv','.m4v','.3gp','.ogv'];
+
+// ═══════════════════════════════════════════════════
+//  FILE BROWSER
+// ═══════════════════════════════════════════════════
+async function browseTo(path) {
+  try {
+    const r = await fetch(`/api/browse?path=${encodeURIComponent(path)}`);
+    const data = await r.json();
+    if (data.error) { console.error(data.error); return; }
+
+    currentBrowsePath = data.path;
+    $('pathInput').value = data.path;
+
+    // Drives
+    if (data.drives && data.drives.length) {
+      $('drivesRow').innerHTML = data.drives.map(d =>
+        `<button class="drive-btn" data-path="${d}">${d}</button>`
+      ).join('');
+      $('drivesRow').querySelectorAll('.drive-btn').forEach(b =>
+        b.addEventListener('click', () => browseTo(b.dataset.path))
+      );
+    }
+
+    // File list
+    const list = $('fileList');
+    list.innerHTML = '';
+
+    for (const item of data.items) {
+      const isVideo = !item.is_dir && VIDEO_EXTS.includes(item.ext);
+      if (!item.is_dir && !isVideo) continue; // hide non-video files
+
+      const el = document.createElement('div');
+      el.className = 'file-item';
+      el.dataset.path = item.path;
+      el.dataset.isDir = item.is_dir;
+      el.dataset.name = item.name;
+      el.dataset.size = item.size;
+
+      const icon = item.is_dir ? '📁' : '🎬';
+      const nameClass = item.is_dir ? 'file-name dir' : 'file-name';
+      const sizeStr = item.is_dir ? '' : formatSize(item.size);
+
+      const isSelected = selectedFiles.some(f => f.path === item.path);
+
+      el.innerHTML = `
+        ${!item.is_dir ? `<div class="file-check">${isSelected ? '✓' : ''}</div>` : ''}
+        <div class="file-icon">${icon}</div>
+        <div class="${nameClass}">${item.name}</div>
+        <div class="file-size">${sizeStr}</div>
+      `;
+
+      if (isSelected) el.classList.add('selected');
+
+      el.addEventListener('click', () => {
+        if (item.is_dir) {
+          browseTo(item.path);
+        } else {
+          toggleFileSelection(item, el);
+        }
+      });
+
+      list.appendChild(el);
+    }
+
+    updateSelectionUI();
+  } catch(e) {
+    console.error('Browse error:', e);
+  }
+}
+
+function toggleFileSelection(item, el) {
+  const idx = selectedFiles.findIndex(f => f.path === item.path);
+  if (idx >= 0) {
+    selectedFiles.splice(idx, 1);
+    el.classList.remove('selected');
+    el.querySelector('.file-check').textContent = '';
+  } else {
+    const entry = { path: item.path, name: item.name, size: item.size, probe: null };
+    selectedFiles.push(entry);
+    el.classList.add('selected');
+    el.querySelector('.file-check').textContent = '✓';
+    // Auto-probe
+    probeFile(entry);
+  }
+  updateSelectionUI();
+}
+
+function updateSelectionUI() {
+  const n = selectedFiles.length;
+  $('selectedCount').textContent = `${n} archivo${n !== 1 ? 's' : ''}`;
+  $('btnAddQueue').disabled = n === 0;
+  renderSelectedFiles();
+}
+
+$('btnUp').addEventListener('click', () => {
+  const parts = currentBrowsePath.replace(/\\/g, '/').split('/');
+  if (parts.length > 1) {
+    parts.pop();
+    browseTo(parts.join('/') || '/');
+  }
+});
+
+$('pathInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') browseTo($('pathInput').value);
+});
+
+$('btnGo').addEventListener('click', () => browseTo($('pathInput').value));
+
+$('btnSelectAll').addEventListener('click', () => {
+  const items = $('fileList').querySelectorAll('.file-item:not([data-is-dir="true"])');
+  const allSelected = [...items].every(el => el.classList.contains('selected'));
+
+  if (allSelected) {
+    // Deselect all in current folder
+    items.forEach(el => {
+      const path = el.dataset.path;
+      selectedFiles = selectedFiles.filter(f => f.path !== path);
+      el.classList.remove('selected');
+      const check = el.querySelector('.file-check');
+      if (check) check.textContent = '';
+    });
+  } else {
+    items.forEach(el => {
+      if (!el.classList.contains('selected')) {
+        const item = { path: el.dataset.path, name: el.dataset.name, size: parseInt(el.dataset.size) };
+        toggleFileSelection(item, el);
+      }
+    });
+  }
+  updateSelectionUI();
+});
+
+// ═══════════════════════════════════════════════════
+//  FFPROBE
+// ═══════════════════════════════════════════════════
+async function probeFile(entry) {
+  try {
+    const r = await fetch('/api/probe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: entry.path }),
+    });
+    const data = await r.json();
+    if (data.error) {
+      entry.probe = { error: data.error };
+    } else {
+      entry.probe = data;
+    }
+  } catch(e) {
+    entry.probe = { error: e.message };
+  }
+  renderSelectedFiles();
+  checkInterlaced();
+}
+
+function checkInterlaced() {
+  // Show deinterlace option if any selected file is interlaced
+  const hasInterlaced = selectedFiles.some(f => f.probe?.video?.interlaced);
+  $('rowDeinterlace').style.display = hasInterlaced ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════
+//  SELECTED FILES LIST
+// ═══════════════════════════════════════════════════
+function renderSelectedFiles() {
+  const el = $('selectedFiles');
+  if (selectedFiles.length === 0) {
+    el.innerHTML = '<div class="empty-state" style="padding:24px;"><div class="sub">Selecciona archivos del explorador</div></div>';
+    return;
+  }
+
+  el.innerHTML = selectedFiles.map((f, i) => {
+    let metaHTML = '';
+    let tagsHTML = '';
+
+    if (f.probe === null) {
+      metaHTML = '<div class="sel-file-loading">Analizando con ffprobe...</div>';
+    } else if (f.probe.error) {
+      metaHTML = `<div class="sel-file-loading" style="color:var(--red);">Error: ${f.probe.error}</div>`;
+    } else {
+      const v = f.probe.video;
+      const fmt = f.probe.format;
+      const dur = fmt?.duration ? formatTime(fmt.duration) : '?';
+      const size = fmt?.size ? formatSize(fmt.size) : '?';
+
+      metaHTML = `<div class="sel-file-meta">
+        <span>${dur}</span>
+        <span>${size}</span>
+        ${v ? `<span>${v.width}×${v.height}</span>` : ''}
+        ${v ? `<span>${v.fps} fps</span>` : ''}
+        ${v?.codec ? `<span>${v.codec}</span>` : ''}
+      </div>`;
+
+      // Tags
+      const tags = [];
+      if (v?.interlaced) tags.push(`<span class="probe-tag interlaced">${v.field_order || 'ENTRELAZADO'}</span>`);
+      if (v?.sar && v.sar !== '1:1') tags.push(`<span class="probe-tag sar">SAR ${v.sar}</span>`);
+
+      const legacyCodecs = ['mpeg2video','mpeg1video','mjpeg','msmpeg4','wmv3','flv1'];
+      if (v?.codec && legacyCodecs.includes(v.codec)) tags.push(`<span class="probe-tag legacy">LEGACY</span>`);
+      else if (v) tags.push(`<span class="probe-tag ok">${v.codec || 'OK'}</span>`);
+
+      if (tags.length) tagsHTML = `<div class="probe-tags">${tags.join('')}</div>`;
+    }
+
+    return `<div class="sel-file">
+      <div class="sel-file-header">
+        <div class="sel-file-icon">🎬</div>
+        <div class="sel-file-name">${f.name}</div>
+        <button class="sel-file-remove" data-idx="${i}" title="Quitar">✕</button>
+      </div>
+      ${metaHTML}
+      ${tagsHTML}
+    </div>`;
+  }).join('');
+
+  // Remove buttons
+  el.querySelectorAll('.sel-file-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedFiles.splice(parseInt(btn.dataset.idx), 1);
+      updateSelectionUI();
+      checkInterlaced();
+    });
+  });
+}
+
+// ═══════════════════════════════════════════════════
+//  MODE SELECTOR
+// ═══════════════════════════════════════════════════
+$('modeSelector').querySelectorAll('.pc-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    currentMode = chip.dataset.mode;
+    $('modeSelector').querySelectorAll('.pc-chip').forEach(c => c.classList.remove('active'));
+    chip.classList.add('active');
+    updateModeUI();
+  });
+});
+
+function updateModeUI() {
+  const isConvert = currentMode === 'convert';
+  $('rowSizeLimit').style.display = isConvert ? 'none' : '';
+  $('rowCRF').style.display = isConvert ? '' : 'none';
+}
+
+// ═══════════════════════════════════════════════════
+//  PC PROFILES
+// ═══════════════════════════════════════════════════
+function renderProfiles() {
+  $('pcProfiles').innerHTML = PC_PROFILES.map(pc => `
+    <div class="pc-chip ${pc.id === activePC.id ? 'active' : ''}" data-id="${pc.id}">
+      <div class="pc-chip-icon">${pc.icon}</div>
+      <div>
+        <div class="pc-chip-name">${pc.name}</div>
+        <div class="pc-chip-sub">${pc.sub}</div>
+      </div>
+    </div>
+  `).join('');
+
+  $('pcProfiles').querySelectorAll('.pc-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      activePC = PC_PROFILES.find(p => p.id === chip.dataset.id);
+      renderProfiles(); updateEncoderOptions();
+    });
+  });
+
+  const badges = [];
+  badges.push(`<span class="hw-badge os">${activePC.os === 'windows' ? 'Windows' : 'Ubuntu'}</span>`);
+  badges.push(`<span class="hw-badge cpu">${activePC.cpu}</span>`);
+  if (activePC.hwEncoders.includes('h264_nvenc')) badges.push('<span class="hw-badge nvenc">NVENC</span>');
+  if (activePC.hwEncoders.some(e => e.includes('amf'))) badges.push('<span class="hw-badge amf">AMF</span>');
+  if (activePC.hwEncoders.some(e => e.includes('qsv'))) badges.push('<span class="hw-badge qsv">QSV</span>');
+  $('hwBadges').innerHTML = badges.join('');
+}
+
+function updateEncoderOptions() {
+  const sel = $('encoder');
+  const available = [...activePC.hwEncoders, ...activePC.swEncoders];
+  const prev = sel.value;
+  sel.innerHTML = available.map(id => ENCODERS[id] ? `<option value="${id}">${ENCODERS[id].label}</option>` : '').join('');
+  sel.value = available.includes(prev) ? prev : (activePC.hwEncoders[0] || activePC.swEncoders[0]);
+  updatePresetOptions();
+}
+
+function updatePresetOptions() {
+  const enc = ENCODERS[$('encoder').value];
+  if (!enc) return;
+  $('preset').innerHTML = enc.presets.map(p => `<option value="${p}" ${p === enc.defaultPreset ? 'selected' : ''}>${p}</option>`).join('');
+  $('presetHint').textContent = enc.hint;
+  $('encoderHint').textContent = enc.type === 'hw' ? 'Hardware — rápido' : 'Software — lento pero preciso';
+}
+
+$('encoder').addEventListener('change', updatePresetOptions);
+
+// ═══════════════════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════════════════
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    $('panel' + tab.dataset.tab.charAt(0).toUpperCase() + tab.dataset.tab.slice(1)).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════
+//  ADD TO QUEUE
+// ═══════════════════════════════════════════════════
+$('btnAddQueue').addEventListener('click', async () => {
+  if (selectedFiles.length === 0) return;
+
+  // Wait for all probes to finish
+  const pending = selectedFiles.filter(f => f.probe === null);
+  if (pending.length > 0) {
+    await new Promise(resolve => {
+      const check = setInterval(() => {
+        if (selectedFiles.every(f => f.probe !== null)) { clearInterval(check); resolve(); }
+      }, 200);
+    });
+  }
+
+  const encId = $('encoder').value;
+  const enc = ENCODERS[encId];
+  if (!enc) return;
+
+  const preset = $('preset').value;
+  const abr = parseInt($('audioBitrate').value);
+  const hasAudio = $('includeAudio').checked;
+  const resOv = $('resOverride').value;
+  const fpsOv = $('fpsOverride').value;
+  const isConvert = currentMode === 'convert';
+  const sizeLimitMB = isConvert ? 0 : (parseFloat($('sizeLimit').value) || 10);
+  const crfVal = parseInt($('crfValue').value) || 20;
+  const deint = $('deinterlace').value;
+  const nullDev = activePC.os === 'linux' ? '/dev/null' : 'NUL';
+
+  const jobsToAdd = [];
+
+  for (const f of selectedFiles) {
+    if (f.probe?.error) continue;
+
+    const v = f.probe?.video;
+    const dur = f.probe?.format?.duration || 10;
+    const srcW = v?.width || 1280;
+    const srcH = v?.height || 720;
+    const srcFps = v?.fps || 30;
+    const isInterlaced = v?.interlaced || false;
+    const sar = v?.sar || null;
+    const hasSAR = sar && sar !== '1:1';
+    const useBitrate = !isConvert;
+
+    // Bitrate calc
+    let vbr = 0;
+    if (useBitrate) {
+      const tgtBytes = sizeLimitMB * 1048576 * 0.98;
+      const audioBitsTotal = hasAudio ? (abr * 1000 * dur) : 0;
+      vbr = Math.floor((tgtBytes * 8 - audioBitsTotal) / dur / 1000);
+      if (vbr < 50) vbr = 50;
+    }
+
+    // FPS
+    let tFps = srcFps, fpsNeeded = false;
+    if (fpsOv === 'auto') {
+      if (useBitrate) { tFps = vbr < 400 ? 24 : vbr < 800 ? 30 : srcFps; }
+      fpsNeeded = tFps < srcFps;
+    } else if (fpsOv !== 'source') {
+      tFps = parseInt(fpsOv);
+      fpsNeeded = tFps !== srcFps;
+    }
+
+    // Resolution
+    let tH = srcH, scaleNeeded = false;
+    if (resOv === 'auto') {
+      if (useBitrate) {
+        tH = vbr < 300 ? 360 : vbr < 700 ? 480 : vbr < 1500 ? 720 : vbr < 4000 ? 1080 : srcH;
+        if (tH >= srcH) tH = srcH; else scaleNeeded = true;
+      }
+    } else if (resOv !== 'source') {
+      tH = parseInt(resOv);
+      scaleNeeded = tH !== srcH;
+    }
+
+    // Filters
+    let vfParts = [];
+    if (isInterlaced && deint !== 'none') vfParts.push(`${deint}=0:-1:0`);
+    if (scaleNeeded && hasSAR) {
+      vfParts.push(`scale=-2:${tH}:force_original_aspect_ratio=decrease`);
+      vfParts.push('setsar=1');
+    } else if (scaleNeeded) {
+      vfParts.push(`scale=-2:${tH}`);
+    } else if (hasSAR) {
+      vfParts.push('scale=iw*sar:ih');
+      vfParts.push('setsar=1');
+    }
+    if (fpsNeeded) vfParts.push(`fps=${tFps}`);
+    const vf = vfParts.length ? ` -vf "${vfParts.join(',')}"` : '';
+
+    const audioStr = hasAudio ? `-c:a aac -b:a ${abr}k` : '-an';
+    const output = f.path.replace(/\.[^.]+$/, '') + '_discord.mp4';
+
+    let cmds;
+    if (useBitrate) {
+      cmds = enc.buildBR(vbr, preset, 'yuv420p', vf, audioStr, f.path, output, nullDev, activePC.threads);
+    } else {
+      cmds = enc.buildCRF(crfVal, preset, 'yuv420p', vf, audioStr, f.path, output, activePC.threads);
+    }
+
+    jobsToAdd.push({
+      input: f.path,
+      output: output,
+      command: cmds,
+      duration: dur,
+    });
+  }
+
+  if (jobsToAdd.length === 0) return;
+
+  // Send to server
+  try {
+    await fetch('/api/jobs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(jobsToAdd),
+    });
+  } catch(e) {
+    console.error('Failed to add jobs:', e);
+  }
+
+  // Clear selection & switch to queue tab
+  selectedFiles = [];
+  updateSelectionUI();
+  document.querySelector('.tab[data-tab="queue"]').click();
+});
+
+// ═══════════════════════════════════════════════════
+//  JOB LIST & SSE PROGRESS
+// ═══════════════════════════════════════════════════
+function renderJobs(jobs) {
+  const el = $('jobList');
+
+  // Update badge
+  const running = jobs.filter(j => j.status === 'running' || j.status === 'queued').length;
+  $('queueBadge').textContent = running > 0 ? `(${running})` : '';
+
+  if (jobs.length === 0) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="icon">📋</div>
+      <div class="text">Cola vacía</div>
+      <div class="sub">Selecciona archivos y agrégalos a la cola</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = jobs.map(j => {
+    const statusClass = j.status;
+    let meta = '';
+    if (j.status === 'running') {
+      meta = `<div class="job-meta">
+        <span><strong>${j.progress.toFixed(1)}%</strong></span>
+        ${j.fps_speed > 0 ? `<span>${j.fps_speed} fps</span>` : ''}
+        <span>${formatTime(j.current_time)} / ${formatTime(j.duration)}</span>
+      </div>`;
+    } else if (j.status === 'done') {
+      meta = `<div class="job-done-info">✓ Listo${j.output_size ? ' — ' + formatSize(j.output_size) : ''}</div>`;
+    } else if (j.status === 'error') {
+      meta = `<div class="job-error-msg">${j.error || 'Error desconocido'}</div>`;
+    }
+
+    const cancelBtn = (j.status === 'queued' || j.status === 'running')
+      ? `<button class="job-cancel" data-id="${j.id}">Cancelar</button>` : '';
+
+    return `<div class="job-card ${statusClass}">
+      <div class="job-header">
+        <div class="job-status-dot ${statusClass}"></div>
+        <div class="job-filename">${j.filename}</div>
+        ${cancelBtn}
+      </div>
+      <div class="job-progress-bar">
+        <div class="job-progress-fill" style="width:${j.progress}%"></div>
+      </div>
+      ${meta}
+    </div>`;
+  }).join('');
+
+  // Cancel buttons
+  el.querySelectorAll('.job-cancel').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await fetch(`/api/jobs/${btn.dataset.id}`, { method: 'DELETE' });
+    });
+  });
+}
+
+$('btnClearDone').addEventListener('click', async () => {
+  await fetch('/api/jobs/clear', { method: 'POST' });
+});
+
+// SSE connection
+function connectSSE() {
+  const sse = new EventSource('/api/progress');
+  sse.onmessage = e => {
+    try {
+      const jobs = JSON.parse(e.data);
+      renderJobs(jobs);
+    } catch(err) {}
+  };
+  sse.onerror = () => {
+    sse.close();
+    setTimeout(connectSSE, 2000);
+  };
+}
+
+// ═══════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1073741824) return (bytes / 1048576).toFixed(2) + ' MB';
+  return (bytes / 1073741824).toFixed(2) + ' GB';
+}
+
+function formatTime(s) {
+  if (!s || !isFinite(s)) return '0s';
+  const m = Math.floor(s / 60);
+  const sec = (s % 60).toFixed(1);
+  return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+}
+
+// ═══════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════
+renderProfiles();
+updateEncoderOptions();
+updateModeUI();
+browseTo(''); // default path from server
+connectSSE();
+</script>
+</body>
+</html>
