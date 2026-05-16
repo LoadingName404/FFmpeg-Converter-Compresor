@@ -684,32 +684,7 @@ const $ = id => document.getElementById(id);
 // ═══════════════════════════════════════════════════
 //  PC PROFILES & ENCODERS
 // ═══════════════════════════════════════════════════
-const PC_PROFILES = [
-  {
-    id: 'desktop', name: 'Desktop', icon: '🖥️',
-    sub: 'i5-10400F · GT 1030', os: 'windows',
-    cpu: 'i5-10400F (6C/12T)',
-    hwEncoders: ['h264_nvenc'],
-    swEncoders: ['libx264', 'libx265'],
-    threads: 12,
-  },
-  {
-    id: 'laptop', name: 'Laptop', icon: '💻',
-    sub: 'R5 7520U · Radeon', os: 'windows',
-    cpu: 'Ryzen 5 7520U (4C/8T)',
-    hwEncoders: ['h264_amf', 'hevc_amf'],
-    swEncoders: ['libx264', 'libx265'],
-    threads: 8,
-  },
-  {
-    id: 'server', name: 'ThinkCentre', icon: '🖧',
-    sub: 'i5-8400T · Ubuntu', os: 'linux',
-    cpu: 'i5-8400T (6C/6T)',
-    hwEncoders: ['h264_qsv', 'hevc_qsv'],
-    swEncoders: ['libx264', 'libx265'],
-    threads: 6,
-  },
-];
+let PC_PROFILES = []; // loaded from /api/profiles at boot
 
 const ENCODERS = {
   libx264: {
@@ -742,10 +717,10 @@ const ENCODERS = {
   },
   h264_nvenc: {
     label: 'H.264 NVENC — GPU', type: 'hw', codec: 'h264',
-    presets: ['p4','p5','p6','p7'], defaultPreset: 'p6',
-    hint: 'NVENC — ultra rápido',
-    buildBR: (br,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_nvenc -b:v ${br}k -preset ${pr} -pix_fmt ${pf} -rc vbr -multipass fullres -spatial-aq 1 -temporal-aq 1${vf} ${au} "${out}"`],
-    buildCRF: (cq,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_nvenc -cq ${cq} -preset ${pr} -pix_fmt ${pf} -rc vbr -multipass fullres -spatial-aq 1 -temporal-aq 1${vf} ${au} "${out}"`],
+    presets: ['slow','medium','fast','hq'], defaultPreset: 'hq',
+    hint: 'NVENC Pascal — rápido',
+    buildBR: (br,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_nvenc -b:v ${br}k -preset ${pr} -pix_fmt ${pf} -rc vbr -spatial-aq 1 -temporal-aq 1${vf} ${au} "${out}"`],
+    buildCRF: (cq,pr,pf,vf,au,inp,out) => [`ffmpeg -y -i "${inp}" -c:v h264_nvenc -cq ${cq} -preset ${pr} -pix_fmt ${pf} -rc vbr -spatial-aq 1 -temporal-aq 1${vf} ${au} "${out}"`],
   },
   h264_amf: {
     label: 'H.264 AMF — AMD', type: 'hw', codec: 'h264',
@@ -780,7 +755,7 @@ const ENCODERS = {
 // ═══════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════
-let activePC = PC_PROFILES[0];
+let activePC = null; // set after profiles load
 let currentMode = 'compress';
 let selectedFiles = []; // [{path, name, size, probe: null|{...}}]
 let currentBrowsePath = '';
@@ -1061,6 +1036,7 @@ function renderProfiles() {
 }
 
 function updateEncoderOptions() {
+  if (!activePC) return;
   const sel = $('encoder');
   const available = [...activePC.hwEncoders, ...activePC.swEncoders];
   const prev = sel.value;
@@ -1327,9 +1303,6 @@ function formatTime(s) {
 }
 
 // ═══════════════════════════════════════════════════
-//  BOOT
-// ═══════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════
 //  LOG VIEWER
 // ═══════════════════════════════════════════════════
 let _currentLogLevel = 'all';
@@ -1371,11 +1344,25 @@ document.querySelectorAll('.log-level-btn').forEach(btn => {
 
 $('btnRefreshLog').addEventListener('click', fetchLogs);
 
-renderProfiles();
-updateEncoderOptions();
-updateModeUI();
-browseTo(''); // default path from server
-connectSSE();
+// ═══════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════
+async function boot() {
+  try {
+    const r = await fetch('/api/profiles');
+    PC_PROFILES = await r.json();
+  } catch(e) {
+    console.error('Failed to load profiles:', e);
+    PC_PROFILES = [];
+  }
+  activePC = PC_PROFILES[0] || null;
+  renderProfiles();
+  updateEncoderOptions();
+  updateModeUI();
+  browseTo('');
+  connectSSE();
+}
+boot();
 </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Discord Video Compressor — Local Server
-Run: python compressor.py
+Run: python main.py
 Open: http://localhost:5000
 """
 
@@ -122,6 +122,21 @@ def browse():
         "drives": drives,
         "items": items,
     })
+
+
+# ─── Routes: Profiles ───────────────────────────────────────────────────────
+@app.route("/api/profiles")
+def get_profiles():
+    profiles_dir = Path(__file__).parent / "profiles"
+    result = []
+    if profiles_dir.exists():
+        for f in sorted(profiles_dir.glob("*.json")):
+            try:
+                with open(f, encoding="utf-8") as fp:
+                    result.append(json.load(fp))
+            except Exception as e:
+                log.warning("Profile %s skipped: %s", f.name, e)
+    return jsonify(result)
 
 
 # ─── Routes: ffprobe ────────────────────────────────────────────────────────

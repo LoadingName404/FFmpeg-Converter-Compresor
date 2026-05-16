@@ -1,0 +1,11 @@
+{
+  "id": "laptop",
+  "name": "Laptop",
+  "icon": "💻",
+  "sub": "R5 7520U · Radeon",
+  "os": "windows",
+  "cpu": "Ryzen 5 7520U (4C/8T)",
+  "hwEncoders": ["h264_amf", "hevc_amf"],
+  "swEncoders": ["libx264", "libx265"],
+  "threads": 8
+}

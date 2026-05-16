@@ -1,0 +1,11 @@
+{
+  "id": "server",
+  "name": "ThinkCentre",
+  "icon": "🖧",
+  "sub": "i5-8400T · Ubuntu",
+  "os": "linux",
+  "cpu": "i5-8400T (6C/6T)",
+  "hwEncoders": ["h264_qsv", "hevc_qsv"],
+  "swEncoders": ["libx264", "libx265"],
+  "threads": 6
+}

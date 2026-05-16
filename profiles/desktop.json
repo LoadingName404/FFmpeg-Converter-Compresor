@@ -1,0 +1,11 @@
+{
+  "id": "desktop",
+  "name": "Desktop",
+  "icon": "🖥️",
+  "sub": "i5-10400F · GT 1030",
+  "os": "windows",
+  "cpu": "i5-10400F (6C/12T)",
+  "hwEncoders": [],
+  "swEncoders": ["libx264", "libx265"],
+  "threads": 12
+}
