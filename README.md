@@ -61,7 +61,7 @@ Los valores de `hwEncoders` y `swEncoders` tienen que coincidir con los IDs de e
 ## Instalación
 
 ```bash
-git clone https://github.com/tu-usuario/discord-compressor
+git clone https://github.com/LoadingName404/discord-compressor
 cd discord-compressor
 python -m venv venv
 

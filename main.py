@@ -16,7 +16,7 @@ import threading
 import time
 import uuid
 import logging
-from logging.handlers import RotatingFileHandler
+from datetime import datetime
 from pathlib import Path
 
 from flask import Flask, Response, jsonify, request, send_from_directory
@@ -24,13 +24,18 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 app = Flask(__name__, static_folder="static")
 
 # ─── Logging ────────────────────────────────────────────────────────────────
-LOG_FILE = Path(__file__).parent / "compressor.log"
+_LOGS_DIR = Path(__file__).parent / "logs"
+_LOGS_DIR.mkdir(exist_ok=True)
+
+_session_ts = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+LOG_FILE = _LOGS_DIR / f"{_session_ts}.log"
+
 _log_fmt = logging.Formatter("%(asctime)s [%(levelname)-7s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
 
 log = logging.getLogger("compressor")
 log.setLevel(logging.DEBUG)
 
-_fh = RotatingFileHandler(LOG_FILE, maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
+_fh = logging.FileHandler(LOG_FILE, encoding="utf-8")
 _fh.setLevel(logging.DEBUG)
 _fh.setFormatter(_log_fmt)
 
@@ -524,7 +529,7 @@ def main():
 ╔══════════════════════════════════════════════╗
 ║   Discord Video Compressor                   ║
 ║   http://{HOST}:{PORT}                       ║
-║   Log: compressor.log                        ║
+║   Log: logs/{_session_ts}.log               ║
 ║   Press Ctrl+C to stop                       ║
 ╚══════════════════════════════════════════════╝
 """)
