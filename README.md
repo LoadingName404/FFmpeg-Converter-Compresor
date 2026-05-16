@@ -18,11 +18,27 @@ El modo **Convertir** lo agregué por la cámara — tengo una Sony HandyCam DCR
 
 ## Los perfiles de equipo
 
-Los tres perfiles hardcodeados en la app son mis tres máquinas. Si querés usarlo en otro hardware, editá el array `PC_PROFILES` en [static/index.html](static/index.html).
+Cada máquina tiene su propio archivo JSON en la carpeta [`profiles/`](profiles/). Al arrancar, el servidor los carga automáticamente. Para agregar un PC nuevo, creá un archivo nuevo en esa carpeta siguiendo el mismo formato:
+
+```json
+{
+  "id": "mi-pc",
+  "name": "Mi PC",
+  "icon": "🖥️",
+  "sub": "Ryzen 7 5800X · RTX 3060",
+  "os": "windows",
+  "cpu": "Ryzen 7 5800X (8C/16T)",
+  "hwEncoders": ["h264_nvenc", "hevc_nvenc"],
+  "swEncoders": ["libx264", "libx265"],
+  "threads": 16
+}
+```
+
+Los valores de `hwEncoders` y `swEncoders` tienen que coincidir con los IDs de encoders definidos en `index.html`.
 
 | Perfil | Specs |
 |---|---|
-| Desktop | i5-10400F · GT 1030 (NVENC) · 16 GB · Windows 10 |
+| Desktop | i5-10400F · GT 1030 · 16 GB · Windows 10 (CPU encoding, NVENC no disponible en esta GPU) |
 | Laptop | ASUS VivoBook 14 · Ryzen 5 7520U · Radeon integrado · 16 GB · Windows 11 |
 | ThinkCentre | i5-8400T · iGPU Intel (QSV) · 16 GB · Ubuntu Server |
 
@@ -61,7 +77,7 @@ pip install flask
 ## Uso
 
 ```bash
-python compressor.py
+python main.py
 ```
 
 Abre `http://localhost:5000` en el navegador.
@@ -85,8 +101,12 @@ Abre `http://localhost:5000` en el navegador.
 
 ```
 discord-compressor/
-├── compressor.py      # Servidor Flask + worker ffmpeg
-├── compressor.log     # Log rotativo (generado al correr)
+├── main.py               # Servidor Flask + worker ffmpeg
+├── compressor.log        # Log rotativo (generado al correr)
+├── profiles/
+│   ├── desktop.json      # Perfil Desktop
+│   ├── laptop.json       # Perfil Laptop
+│   └── thinkcentre.json  # Perfil ThinkCentre
 └── static/
-    └── index.html     # UI completa (JS vanilla, sin dependencias de build)
+    └── index.html        # UI completa (JS vanilla, sin dependencias de build)
 ```
