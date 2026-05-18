@@ -144,6 +144,119 @@ def get_profiles():
     return jsonify(result)
 
 
+# ─── Routes: Profile Wizard ─────────────────────────────────────────────────
+
+@app.route("/api/wizard/sysinfo")
+def wizard_sysinfo():
+    os_name = platform.system().lower()
+    if os_name == "darwin":
+        os_name = "macos"
+
+    cpu = platform.processor() or "Unknown"
+    try:
+        if platform.system() == "Windows":
+            r = subprocess.run(
+                "wmic cpu get name /value",
+                capture_output=True, text=True, timeout=5, shell=True,
+            )
+            for line in r.stdout.splitlines():
+                if line.lower().startswith("name="):
+                    cpu = line.split("=", 1)[1].strip()
+                    break
+        elif platform.system() == "Linux":
+            with open("/proc/cpuinfo", encoding="utf-8", errors="replace") as f:
+                for line in f:
+                    if line.startswith("model name"):
+                        cpu = line.split(":", 1)[1].strip()
+                        break
+        elif platform.system() == "Darwin":
+            r = subprocess.run(
+                ["sysctl", "-n", "machdep.cpu.brand_string"],
+                capture_output=True, text=True, timeout=5,
+            )
+            cpu = r.stdout.strip() or cpu
+    except Exception:
+        pass
+
+    return jsonify({"os": os_name, "cpu": cpu, "threads": os.cpu_count() or 4})
+
+
+@app.route("/api/wizard/test", methods=["POST"])
+def wizard_test_encoder():
+    data = request.get_json()
+    encoder = (data.get("encoder") or "").strip()
+
+    if not encoder or not re.match(r"^[a-z0-9_]+$", encoder):
+        return jsonify({"ok": False, "error": "Nombre de encoder inválido"}), 400
+
+    null_dev = "NUL" if platform.system() == "Windows" else "/dev/null"
+    use_shell = platform.system() == "Windows"
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-f", "lavfi",
+        "-i", "testsrc=duration=1:size=320x240:rate=30",
+        "-pix_fmt", "yuv420p",
+        "-c:v", encoder,
+        "-t", "1",
+        "-f", "null",
+        null_dev,
+    ]
+
+    try:
+        result = subprocess.run(
+            " ".join(cmd) if use_shell else cmd,
+            capture_output=True, text=True, timeout=15,
+            shell=use_shell, encoding="utf-8", errors="replace",
+        )
+        ok = result.returncode == 0
+        error = None
+        if not ok:
+            lines = [l.strip() for l in result.stderr.splitlines() if l.strip()]
+            bad = [l for l in lines if any(w in l.lower() for w in ("error", "unknown", "not found", "no such", "invalid", "failed", "cannot"))]
+            error = bad[-1] if bad else (lines[-1] if lines else "failed")
+        log.debug("WIZARD test %s → %s", encoder, "OK" if ok else error)
+        return jsonify({"encoder": encoder, "ok": ok, "error": error})
+    except subprocess.TimeoutExpired:
+        return jsonify({"encoder": encoder, "ok": False, "error": "timeout"})
+    except Exception as e:
+        return jsonify({"encoder": encoder, "ok": False, "error": str(e)})
+
+
+@app.route("/api/wizard/save", methods=["POST"])
+def wizard_save_profile():
+    data = request.get_json()
+
+    profile_id = re.sub(r"[^a-z0-9_-]", "", (data.get("id") or "").lower())[:30]
+    if not profile_id:
+        return jsonify({"error": "ID de perfil inválido"}), 400
+
+    def clean_enc(lst):
+        return [e for e in (lst or []) if isinstance(e, str) and re.match(r"^[a-z0-9_]+$", e)]
+
+    profile = {
+        "id": profile_id,
+        "name": str(data.get("name") or "Mi PC")[:50],
+        "icon": str(data.get("icon") or "💻")[:8],
+        "sub": str(data.get("sub") or "")[:100],
+        "os": str(data.get("os") or "windows"),
+        "cpu": str(data.get("cpu") or "")[:100],
+        "hwEncoders": clean_enc(data.get("hwEncoders")),
+        "swEncoders": clean_enc(data.get("swEncoders")),
+        "threads": max(1, min(256, int(data.get("threads") or 4))),
+    }
+
+    profiles_dir = Path(__file__).parent / "profiles"
+    profiles_dir.mkdir(exist_ok=True)
+    out_path = profiles_dir / f"{profile_id}.json"
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(profile, f, ensure_ascii=False, indent=2)
+
+    log.info("WIZARD saved profile: %s → %s", profile_id, out_path.name)
+    return jsonify({"ok": True, "profile": profile})
+
+
 # ─── Routes: ffprobe ────────────────────────────────────────────────────────
 @app.route("/api/probe", methods=["POST"])
 def probe():

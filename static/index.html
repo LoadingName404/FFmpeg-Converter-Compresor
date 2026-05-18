@@ -459,6 +459,105 @@ body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-se
 .log-line.lv-warning { color: var(--yellow); }
 .log-line.lv-debug   { color: var(--text-muted); }
 .log-line.lv-info    { color: var(--text-dim); }
+
+/* ── Profile Wizard ── */
+.wizard-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+}
+.wizard-modal {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 16px; width: 480px; max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px); display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.wiz-header {
+  padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 12px; flex-shrink: 0;
+}
+.wiz-title { flex: 1; font-weight: 700; font-size: 0.95rem; }
+.wiz-close {
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; font-size: 1rem; padding: 2px 6px;
+  border-radius: 6px; transition: all 0.2s;
+}
+.wiz-close:hover { background: var(--surface2); color: var(--text); }
+.wiz-steps-bar {
+  display: flex; align-items: center; padding: 12px 20px;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.wiz-step-dot {
+  width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; font-weight: 700;
+  background: var(--surface2); border: 2px solid var(--border); color: var(--text-muted);
+}
+.wiz-step-dot.active { border-color: var(--accent); color: var(--accent); }
+.wiz-step-dot.done { background: var(--accent); border-color: var(--accent); color: #fff; }
+.wiz-step-line { flex: 1; height: 2px; background: var(--border); margin: 0 6px; }
+.wiz-step { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.wiz-body { flex: 1; overflow-y: auto; padding: 18px 20px 4px; }
+.wiz-body::-webkit-scrollbar { width: 5px; }
+.wiz-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.wiz-footer {
+  padding: 12px 20px; border-top: 1px solid var(--border);
+  display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0;
+}
+.wiz-sub-title {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 2px; color: var(--text-muted); margin: 0 0 10px;
+}
+.wiz-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.wiz-tag {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 6px 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 0.76rem; color: var(--text-dim);
+}
+.wiz-tag-wide { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wiz-enc-row {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; margin-bottom: 4px;
+}
+.wiz-enc-name { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+.wiz-enc-badge { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-muted); }
+.wiz-enc-badge.ok { color: var(--green); }
+.wiz-enc-badge.fail { color: var(--red); }
+.wiz-enc-badge.testing { color: var(--accent); }
+.wiz-progress { height: 4px; background: var(--surface3); border-radius: 2px; overflow: hidden; margin-bottom: 10px; }
+.wiz-prog-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7B83F5); border-radius: 2px; transition: width 0.3s; }
+.wiz-form { display: flex; flex-direction: column; gap: 12px; margin-bottom: 4px; }
+.wiz-field { display: flex; flex-direction: column; gap: 5px; }
+.wiz-field label { font-size: 0.73rem; font-weight: 600; color: var(--text-muted); }
+.wiz-field-row { flex-direction: row !important; gap: 10px !important; align-items: flex-end; }
+.wiz-field-row > * { flex: 1; }
+.wiz-chk-list { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.wiz-chk-row {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; cursor: pointer; transition: border-color 0.2s; user-select: none;
+}
+.wiz-chk-row:hover { border-color: #444; }
+.wiz-chk-row.checked { border-color: var(--accent); background: rgba(88,101,242,0.06); }
+.wiz-chk-box {
+  width: 17px; height: 17px; border-radius: 4px; flex-shrink: 0;
+  border: 2px solid var(--border); display: flex; align-items: center; justify-content: center;
+  font-size: 0.68rem; transition: all 0.2s;
+}
+.wiz-chk-row.checked .wiz-chk-box { border-color: var(--accent); background: var(--accent); color: #fff; }
+.wiz-chk-name { flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+.wiz-chk-hint { font-size: 0.7rem; color: var(--text-muted); }
+.wiz-none-msg { font-size: 0.8rem; color: var(--text-muted); padding: 6px 0; }
+.wiz-done { display: flex; flex-direction: column; align-items: center; padding: 28px 16px; text-align: center; }
+.wiz-done-icon {
+  width: 52px; height: 52px; border-radius: 50%; margin-bottom: 12px;
+  background: rgba(87,242,135,0.15); border: 2px solid rgba(87,242,135,0.3);
+  color: var(--green); font-size: 1.4rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.wiz-done-title { font-size: 1rem; font-weight: 700; margin-bottom: 6px; }
+.wiz-done-sub { font-size: 0.82rem; color: var(--text-muted); }
 </style>
 </head>
 <body>
@@ -518,7 +617,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-se
           </div>
         </div>
 
-        <div class="section-title">Equipo</div>
+        <div style="display:flex;align-items:center;margin:20px 0 14px;">
+          <div class="section-title" style="margin:0;flex:1;">Equipo</div>
+          <button class="btn btn-ghost" id="btnNewProfile" style="padding:3px 10px;font-size:0.75rem;">+ Nuevo perfil</button>
+        </div>
         <div class="pc-profiles" id="pcProfiles"></div>
         <div class="hw-badges" id="hwBadges"></div>
 
@@ -673,6 +775,98 @@ body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-se
         <div class="log-viewer" id="logViewer">
           <span class="log-line lv-info">Abre esta pestaña para cargar el historial.</span>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Profile Wizard Modal -->
+<div class="wizard-overlay" id="wizardOverlay" style="display:none;">
+  <div class="wizard-modal">
+    <div class="wiz-header">
+      <div class="wiz-title">Crear perfil de PC</div>
+      <button class="wiz-close" id="wizardClose">✕</button>
+    </div>
+    <div class="wiz-steps-bar">
+      <div class="wiz-step-dot active" data-step="1">1</div>
+      <div class="wiz-step-line"></div>
+      <div class="wiz-step-dot" data-step="2">2</div>
+      <div class="wiz-step-line"></div>
+      <div class="wiz-step-dot" data-step="3">3</div>
+    </div>
+
+    <!-- Step 1: Scan -->
+    <div class="wiz-step" id="wizStep1">
+      <div class="wiz-body">
+        <div class="wiz-sub-title">Sistema detectado</div>
+        <div class="wiz-tags" id="wizSysinfo"><div class="wiz-tag">Cargando…</div></div>
+        <div class="wiz-sub-title">Encoders de video</div>
+        <div id="wizEncList"></div>
+      </div>
+      <div class="wiz-footer">
+        <button class="btn btn-primary" id="wizBtnScan">Iniciar escaneo</button>
+      </div>
+    </div>
+
+    <!-- Step 2: Configure -->
+    <div class="wiz-step" id="wizStep2" style="display:none;">
+      <div class="wiz-body">
+        <div class="wiz-form">
+          <div class="wiz-field">
+            <label>Nombre del perfil</label>
+            <input class="s-input" id="wizName" type="text" style="width:100%;" placeholder="Mi PC Gamer">
+          </div>
+          <div class="wiz-field wiz-field-row">
+            <div class="wiz-field" style="flex:0 0 80px;">
+              <label>Ícono</label>
+              <input class="s-input" id="wizIcon" type="text" maxlength="4" placeholder="🖥️" style="width:100%;">
+            </div>
+            <div class="wiz-field">
+              <label>Descripción corta</label>
+              <input class="s-input" id="wizSub" type="text" style="width:100%;" placeholder="Ryzen 5 · RTX 3060">
+            </div>
+          </div>
+          <div class="wiz-field">
+            <label>CPU</label>
+            <input class="s-input" id="wizCpu" type="text" style="width:100%;">
+          </div>
+          <div class="wiz-field wiz-field-row">
+            <div class="wiz-field">
+              <label>OS</label>
+              <select class="s-select" id="wizOs" style="width:100%;">
+                <option value="windows">Windows</option>
+                <option value="linux">Linux</option>
+                <option value="macos">macOS</option>
+              </select>
+            </div>
+            <div class="wiz-field">
+              <label>Threads</label>
+              <input class="s-input" id="wizThreads" type="number" min="1" max="256" style="width:100%;">
+            </div>
+          </div>
+          <div class="wiz-sub-title" style="margin-top:6px;">Encoders hardware (GPU)</div>
+          <div class="wiz-chk-list" id="wizHwEnc"></div>
+          <div class="wiz-sub-title">Encoders software (CPU)</div>
+          <div class="wiz-chk-list" id="wizSwEnc"></div>
+        </div>
+      </div>
+      <div class="wiz-footer">
+        <button class="btn btn-ghost" id="wizBtnBack">← Volver</button>
+        <button class="btn btn-primary" id="wizBtnSave">Guardar perfil</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Done -->
+    <div class="wiz-step" id="wizStep3" style="display:none;">
+      <div class="wiz-body">
+        <div class="wiz-done">
+          <div class="wiz-done-icon">✓</div>
+          <div class="wiz-done-title">Perfil creado</div>
+          <div class="wiz-done-sub" id="wizDoneSub"></div>
+        </div>
+      </div>
+      <div class="wiz-footer">
+        <button class="btn btn-primary" id="wizBtnDone">Cerrar</button>
       </div>
     </div>
   </div>
@@ -1343,6 +1537,177 @@ document.querySelectorAll('.log-level-btn').forEach(btn => {
 });
 
 $('btnRefreshLog').addEventListener('click', fetchLogs);
+
+// ═══════════════════════════════════════════════════
+//  PROFILE WIZARD
+// ═══════════════════════════════════════════════════
+const _WIZ_HW = ['h264_nvenc','hevc_nvenc','h264_amf','hevc_amf','h264_qsv','hevc_qsv','h264_videotoolbox','hevc_videotoolbox'];
+const _WIZ_SW = ['libx264','libx265'];
+const _WIZ_ALL = [..._WIZ_HW, ..._WIZ_SW];
+const _WIZ_LABELS = {
+  libx264:'H.264 · CPU', libx265:'H.265 · CPU',
+  h264_nvenc:'H.264 · NVIDIA', hevc_nvenc:'H.265 · NVIDIA',
+  h264_amf:'H.264 · AMD', hevc_amf:'H.265 · AMD',
+  h264_qsv:'H.264 · Intel', hevc_qsv:'H.265 · Intel',
+  h264_videotoolbox:'H.264 · Apple', hevc_videotoolbox:'H.265 · Apple',
+};
+
+let _wizSys = null, _wizResults = {}, _wizScanning = false, _wizScanDone = false;
+
+function openWizard() {
+  _wizSys = null; _wizResults = {}; _wizScanning = false; _wizScanDone = false;
+  $('wizBtnScan').textContent = 'Iniciar escaneo';
+  $('wizBtnScan').disabled = false;
+  _wizGoStep(1);
+  $('wizardOverlay').style.display = 'flex';
+  _wizLoadSys();
+}
+
+function closeWizard() { $('wizardOverlay').style.display = 'none'; }
+
+$('wizardClose').addEventListener('click', closeWizard);
+$('btnNewProfile').addEventListener('click', openWizard);
+$('wizardOverlay').addEventListener('click', e => { if (e.target === $('wizardOverlay')) closeWizard(); });
+
+function _wizGoStep(n) {
+  document.querySelectorAll('.wiz-step-dot').forEach(d => {
+    const s = parseInt(d.dataset.step);
+    d.className = 'wiz-step-dot' + (s < n ? ' done' : s === n ? ' active' : '');
+  });
+  for (let i = 1; i <= 3; i++) {
+    const el = $(`wizStep${i}`);
+    el.style.display = i === n ? 'flex' : 'none';
+  }
+}
+
+async function _wizLoadSys() {
+  try {
+    const r = await fetch('/api/wizard/sysinfo');
+    _wizSys = await r.json();
+    const osIcon = {windows:'🪟', linux:'🐧', macos:'🍎'}[_wizSys.os] || '💻';
+    $('wizSysinfo').innerHTML =
+      `<div class="wiz-tag">${osIcon} ${_wizSys.os}</div>` +
+      `<div class="wiz-tag">⚡ ${_wizSys.threads} threads</div>` +
+      `<div class="wiz-tag wiz-tag-wide" title="${escapeHtml(_wizSys.cpu)}">🖥 ${escapeHtml(_wizSys.cpu)}</div>`;
+    $('wizEncList').innerHTML = _WIZ_ALL.map(e =>
+      `<div class="wiz-enc-row"><span class="wiz-enc-name">${e}</span><span class="wiz-enc-badge" id="wizB_${e}">pendiente</span></div>`
+    ).join('');
+  } catch(e) {
+    $('wizSysinfo').innerHTML = `<div class="wiz-tag" style="color:var(--red)">Error al detectar</div>`;
+  }
+}
+
+$('wizBtnScan').addEventListener('click', async () => {
+  if (_wizScanDone) { _wizPopForm(); _wizGoStep(2); return; }
+  if (_wizScanning) return;
+  _wizScanning = true;
+  $('wizBtnScan').disabled = true;
+  $('wizBtnScan').textContent = 'Escaneando…';
+
+  $('wizEncList').insertAdjacentHTML('beforebegin',
+    '<div class="wiz-progress"><div class="wiz-prog-fill" id="wizProgFill" style="width:0%"></div></div>');
+
+  for (let i = 0; i < _WIZ_ALL.length; i++) {
+    const enc = _WIZ_ALL[i];
+    const badge = $(`wizB_${enc}`);
+    if (badge) { badge.className = 'wiz-enc-badge testing'; badge.textContent = 'probando…'; }
+    try {
+      const r = await fetch('/api/wizard/test', {
+        method: 'POST', headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({encoder: enc}),
+      });
+      const d = await r.json();
+      _wizResults[enc] = d;
+      if (badge) { badge.className = `wiz-enc-badge ${d.ok ? 'ok' : 'fail'}`; badge.textContent = d.ok ? '✓ OK' : '✗ no'; }
+    } catch(e) {
+      _wizResults[enc] = {ok: false};
+      if (badge) { badge.className = 'wiz-enc-badge fail'; badge.textContent = '✗ error'; }
+    }
+    const pf = $('wizProgFill');
+    if (pf) pf.style.width = `${Math.round((i+1) / _WIZ_ALL.length * 100)}%`;
+  }
+
+  _wizScanning = false;
+  _wizScanDone = true;
+  const n = Object.values(_wizResults).filter(r => r.ok).length;
+  $('wizBtnScan').disabled = false;
+  $('wizBtnScan').textContent = `${n} compatible${n !== 1 ? 's' : ''} — Configurar →`;
+});
+
+function _wizPopForm() {
+  if (!_wizSys) return;
+  $('wizName').value = '';
+  $('wizName').style.borderColor = '';
+  $('wizIcon').value = {windows:'🖥️', linux:'🐧', macos:'🍎'}[_wizSys.os] || '💻';
+  $('wizSub').value = '';
+  $('wizCpu').value = _wizSys.cpu;
+  $('wizOs').value = _wizSys.os === 'darwin' ? 'macos' : (_wizSys.os || 'windows');
+  $('wizThreads').value = _wizSys.threads;
+
+  const renderChecks = (container, list) => {
+    const passing = list.filter(e => _wizResults[e]?.ok);
+    if (!passing.length) {
+      container.innerHTML = '<div class="wiz-none-msg">No se encontraron encoders.</div>';
+      return;
+    }
+    container.innerHTML = passing.map(e => `
+      <label class="wiz-chk-row checked">
+        <input type="checkbox" checked data-enc="${e}">
+        <div class="wiz-chk-box">✓</div>
+        <span class="wiz-chk-name">${e}</span>
+        <span class="wiz-chk-hint">${_WIZ_LABELS[e] || ''}</span>
+      </label>`).join('');
+    container.querySelectorAll('.wiz-chk-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const cb = row.querySelector('input');
+        cb.checked = !cb.checked;
+        row.classList.toggle('checked', cb.checked);
+        row.querySelector('.wiz-chk-box').textContent = cb.checked ? '✓' : '';
+      });
+    });
+  };
+  renderChecks($('wizHwEnc'), _WIZ_HW);
+  renderChecks($('wizSwEnc'), _WIZ_SW);
+}
+
+$('wizBtnBack').addEventListener('click', () => _wizGoStep(1));
+
+$('wizBtnSave').addEventListener('click', async () => {
+  const name = $('wizName').value.trim();
+  if (!name) { $('wizName').focus(); $('wizName').style.borderColor = 'var(--red)'; return; }
+  $('wizName').style.borderColor = '';
+
+  let id = name.toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').substring(0, 30) || 'pc_nuevo';
+  let base = id, n = 2;
+  while (PC_PROFILES.some(p => p.id === id)) id = `${base}_${n++}`;
+
+  const hw = [...document.querySelectorAll('#wizHwEnc input:checked')].map(c => c.dataset.enc);
+  const sw = [...document.querySelectorAll('#wizSwEnc input:checked')].map(c => c.dataset.enc);
+
+  try {
+    const r = await fetch('/api/wizard/save', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        id, name, icon: $('wizIcon').value || '💻',
+        sub: $('wizSub').value.trim(), os: $('wizOs').value,
+        cpu: $('wizCpu').value.trim(), hwEncoders: hw, swEncoders: sw,
+        threads: parseInt($('wizThreads').value) || 4,
+      }),
+    });
+    const data = await r.json();
+    if (data.error) { alert(data.error); return; }
+    $('wizDoneSub').textContent = `"${name}" guardado como profiles/${id}.json`;
+    _wizGoStep(3);
+    const pr = await fetch('/api/profiles');
+    PC_PROFILES = await pr.json();
+    activePC = PC_PROFILES.find(p => p.id === id) || PC_PROFILES[0];
+    renderProfiles(); updateEncoderOptions();
+  } catch(e) { alert('Error: ' + e.message); }
+});
+
+$('wizBtnDone').addEventListener('click', closeWizard);
 
 // ═══════════════════════════════════════════════════
 //  BOOT

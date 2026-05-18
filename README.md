@@ -18,7 +18,21 @@ El modo **Convertir** lo agregué por la cámara — tengo una Sony HandyCam DCR
 
 ## Los perfiles de equipo
 
-Cada máquina tiene su propio archivo JSON en la carpeta [`profiles/`](profiles/). Al arrancar, el servidor los carga automáticamente. Para agregar un PC nuevo, creá un archivo nuevo en esa carpeta siguiendo el mismo formato:
+Cada máquina tiene su propio archivo JSON en la carpeta [`profiles/`](profiles/). Al arrancar, el servidor los carga automáticamente.
+
+### Crear un perfil nuevo (wizard automático)
+
+Desde la UI, hacé clic en **+ Nuevo perfil** junto a la sección "Equipo". El wizard hace tres cosas:
+
+1. **Detecta el sistema** — OS, nombre del CPU y cantidad de threads
+2. **Testea encoders** — corre un encode de prueba de 1 segundo con video sintético (`testsrc` de ffmpeg) para cada encoder conocido (NVENC, AMF, QSV, libx264, libx265, etc.) y marca cuáles son compatibles con tu hardware
+3. **Configura el perfil** — te muestra solo los encoders que funcionaron, editás el nombre y guardás
+
+El perfil se guarda automáticamente en `profiles/{id}.json` y queda disponible de inmediato.
+
+### Crear un perfil manualmente
+
+También podés crear el JSON directamente en `profiles/`:
 
 ```json
 {
@@ -47,11 +61,12 @@ Los valores de `hwEncoders` y `swEncoders` tienen que coincidir con los IDs de e
 - **Modo Comprimir** — calcula el bitrate exacto para que el video entre en el límite de tamaño configurado, con encoding de dos pasadas para máxima precisión
 - **Modo Convertir** — convierte video legacy (HandyCam, DVD, VHS capturado) a MP4 con calidad constante (CRF)
 - **Encoders de hardware** — NVENC (Nvidia), AMF (AMD), Quick Sync (Intel) además de libx264/libx265 por CPU
+- **Wizard de perfiles** — detecta OS y CPU, testea todos los encoders contra un clip sintético y genera el JSON del perfil desde la UI
 - **Cola de trabajos** — procesa múltiples archivos en secuencia con progreso en tiempo real
 - **Explorador de archivos** integrado, con soporte de unidades en Windows
 - **Detección automática** de video entrelazado (480i, 1080i) con deinterlace yadif/bwdif
 - **Corrección de SAR** para videos con píxeles no cuadrados (formato HandyCam, DVD anamórfico)
-- **Log rotativo** en `compressor.log` con visor integrado en la UI
+- **Log rotativo** en `logs/` con visor integrado en la UI
 
 ## Requisitos
 
@@ -82,10 +97,11 @@ python main.py
 
 Abre `http://localhost:5000` en el navegador.
 
-1. Navega al archivo desde el explorador lateral
-2. Selecciona uno o más videos
-3. Elige el modo (**Comprimir** o **Convertir**) y tu perfil de equipo
-4. Hacé clic en **Agregar a cola** — el output se guarda como `nombre_discord.mp4` en la misma carpeta
+1. Si es la primera vez en un PC nuevo, hacé clic en **+ Nuevo perfil** para detectar encoders automáticamente
+2. Navega al archivo desde el explorador lateral
+3. Selecciona uno o más videos
+4. Elige el modo (**Comprimir** o **Convertir**) y tu perfil de equipo
+5. Hacé clic en **Agregar a cola** — el output se guarda como `nombre_discord.mp4` en la misma carpeta
 
 ## Encoders soportados
 
@@ -101,12 +117,12 @@ Abre `http://localhost:5000` en el navegador.
 
 ```
 discord-compressor/
-├── main.py               # Servidor Flask + worker ffmpeg
-├── compressor.log        # Log rotativo (generado al correr)
+├── main.py               # Servidor Flask + worker ffmpeg + API del wizard
 ├── profiles/
 │   ├── desktop.json      # Perfil Desktop
 │   ├── laptop.json       # Perfil Laptop
 │   └── thinkcentre.json  # Perfil ThinkCentre
+├── logs/                 # Logs por sesión (generados al correr)
 └── static/
     └── index.html        # UI completa (JS vanilla, sin dependencias de build)
 ```
